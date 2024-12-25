@@ -120,7 +120,7 @@ class _KhaltiWebViewState extends State<KhaltiWebView> {
       final webViewController = await webViewControllerCompleter.future;
       webViewController.loadUrl(
         urlRequest: URLRequest(
-          url: WebUri('javascript:window.location.reload(true)'),
+          url: Uri.parse('javascript:window.location.reload(true)'),
         ),
       );
     }
@@ -175,24 +175,24 @@ class _KhaltiWebViewClient extends StatelessWidget {
             }
           }
         },
-        onReceivedError: (_, webResourceRequest, error) async {
+        onLoadError: (controller, url, code, message) async {
           if (returnUrl.isNotNullAndNotEmpty &&
-              webResourceRequest.url.toString().contains(returnUrl!)) {
+              url.toString().contains(returnUrl!)) {
             showLinearProgressIndicator.value = false;
             return khalti.onMessage(
-              description: error.description,
+              description: message,
               event: KhaltiEvent.returnUrlLoadFailure,
               needsPaymentConfirmation: true,
               khalti,
             );
           }
         },
-        onReceivedHttpError: (_, webResourceRequest, response) async {
+        onLoadHttpError: (controller, url, statusCode, description) {
           if (returnUrl.isNotNullAndNotEmpty &&
-              webResourceRequest.url.toString().contains(returnUrl!)) {
+              url.toString().contains(returnUrl!)) {
             showLinearProgressIndicator.value = false;
-            return khalti.onMessage(
-              statusCode: response.statusCode,
+            khalti.onMessage(
+              statusCode: statusCode,
               event: KhaltiEvent.returnUrlLoadFailure,
               needsPaymentConfirmation: true,
               khalti,
@@ -200,18 +200,22 @@ class _KhaltiWebViewClient extends StatelessWidget {
           }
         },
         onWebViewCreated: webViewControllerCompleter.complete,
-        initialSettings: InAppWebViewSettings(
-          useOnLoadResource: true,
-          useHybridComposition: true,
-          clearCache: true,
-          cacheEnabled: false,
-          cacheMode: CacheMode.LOAD_NO_CACHE,
+        initialOptions: InAppWebViewGroupOptions(
+          crossPlatform: InAppWebViewOptions(
+            useOnLoadResource: true,
+            clearCache: true,
+            cacheEnabled: false,
+          ),
+          android: AndroidInAppWebViewOptions(
+            cacheMode: AndroidCacheMode.LOAD_NO_CACHE,
+            useHybridComposition: true,
+            clearSessionCache: true,
+          ),
+          ios: IOSInAppWebViewOptions(),
         ),
         initialUrlRequest: URLRequest(
-          url: WebUri.uri(
-            Uri.parse(isProd ? prodPaymentUrl : testPaymentUrl).replace(
-              queryParameters: {'pidx': payConfig.pidx},
-            ),
+          url: Uri.parse(isProd ? prodPaymentUrl : testPaymentUrl).replace(
+            queryParameters: {'pidx': payConfig.pidx},
           ),
         ),
         onProgressChanged: (_, progress) {
